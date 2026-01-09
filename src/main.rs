@@ -23,15 +23,15 @@ use log::LevelFilter;
 #[command(author, version, about)]
 pub struct Cli {
     /// Decades (comma separated)
-    #[arg(long)]
+    #[arg(long, short = 'd')]
     pub decades: Option<String>,
 
     /// Moods (comma separated)
-    #[arg(long)]
+    #[arg(long, short = 'm')]
     pub moods: Option<String>,
 
     /// Countries (comma separated ISO codes)
-    #[arg(long)]
+    #[arg(long, short = 'c')]
     pub countries: Option<String>,
 
     /// Audio player
@@ -63,15 +63,6 @@ impl Cli {
         }
     }
 }
-
-// fn default_player() -> &'static str {
-//     // if cfg!(target_os = "macos") {
-//     //     "play"
-//     // } else {
-//     //     "mpv"
-//     // }
-//     "mpv"
-// }
 
 #[derive(Debug, Deserialize)]
 struct ApiResponse {
@@ -155,13 +146,16 @@ async fn run_direct(cli: Cli) {
         .map(|s| s.split(',').collect())
         .unwrap_or_default();
     
-    let moods: Vec<&str> = cli.moods.as_ref()
-        .map(|s| s.split(',').collect())
-        .unwrap_or_else(|| vec!["SLOW", "FAST", "WEIRD"]);
+    let moods: Vec<String> = cli.moods.as_ref()
+        .map(|s| s.split(',').map(|m| m.to_uppercase()).collect())
+        .unwrap_or_else(|| vec!["SLOW".to_string(), "FAST".to_string(), "WEIRD".to_string()]);
     
-    let countries: Vec<&str> = cli.countries.as_ref()
-        .map(|s| s.split(',').collect())
+    let countries: Vec<String> = cli.countries.as_ref()
+        .map(|s| s.split(',').map(|c| c.to_uppercase()).collect())
         .unwrap_or_default();
+    
+    let moods: Vec<&str> = moods.iter().map(|s| s.as_str()).collect();
+    let countries: Vec<&str> = countries.iter().map(|s| s.as_str()).collect();
 
     let _ = play_loop(&cli.player, decades, moods, countries).await;
 }
