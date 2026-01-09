@@ -3,7 +3,7 @@
 
 /*
 cargo build --release
-sudo cp "./target/release/radiooooo-rust-cli" "/usr/bin/radiooooo"
+sudo cp "./target/release/radiooooo-rust-cli" "/usr/local/bin/radiooooo"
 */
 
 use reqwest::Client;
