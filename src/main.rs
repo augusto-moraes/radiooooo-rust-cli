@@ -151,13 +151,17 @@ async fn run_direct(cli: Cli) {
         return;
     }
 
-    let decades = cli.decades.expect("Missing --decades");
-    let moods = cli.moods.expect("Missing --moods");
-    let countries = cli.countries.expect("Missing --countries");
-
-    let decades: Vec<&str> = decades.split(',').collect();
-    let moods: Vec<&str> = moods.split(',').collect();
-    let countries: Vec<&str> = countries.split(',').collect();
+    let decades: Vec<&str> = cli.decades.as_ref()
+        .map(|s| s.split(',').collect())
+        .unwrap_or_default();
+    
+    let moods: Vec<&str> = cli.moods.as_ref()
+        .map(|s| s.split(',').collect())
+        .unwrap_or_else(|| vec!["SLOW", "FAST", "WEIRD"]);
+    
+    let countries: Vec<&str> = cli.countries.as_ref()
+        .map(|s| s.split(',').collect())
+        .unwrap_or_default();
 
     let _ = play_loop(&cli.player, decades, moods, countries).await;
 }
@@ -277,9 +281,9 @@ async fn main() {
         "A command-line client made on RUST for radiooooo.com".bright_black()
     );
 
-    if !cli.random && (cli.decades.is_none() || cli.moods.is_none() || cli.countries.is_none()) {
-        run_interactive(cli).await;
-    } else {
+    if cli.random || cli.decades.is_some() || cli.moods.is_some() || cli.countries.is_some() {
         run_direct(cli).await;
+    } else {
+       run_interactive(cli).await; 
     }
 }
