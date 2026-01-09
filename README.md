@@ -13,13 +13,13 @@ Options are :
 * [none]         : runs radiooooo-cli interactively. You'll be able to chose the desired years, moods and countries  
   Ex: `$ radiooooo`
 * -r or --random : automatically selects all years, moods and countries  
-  Ex: `$radiooooo -r`
+  Ex: `$ radiooooo -r`
 * --countries    : selects the countries by isocode, separeted with ','  
-  Ex: `radiooooo --countries BRA,FRA,JPN`
+  Ex: `$ radiooooo --countries BRA,FRA,JPN`
 * --moods        : selects the moods (WEIRD, FAST and SLOW), separeted with ','  
-  Ex:  `radiooooo --countries BRA,FRA,JPN --moods WEIRD,FAST,SLOW`
+  Ex:  `$ radiooooo --countries BRA,FRA,JPN --moods WEIRD,FAST,SLOW`
 * --decades      : selects the decades, separeted with ','  
-  Ex: `radiooooo --decades 1970,2000 --countries BRA,FRA,JPN --moods WEIRD,FAST,SLOW`
+  Ex: `$ radiooooo --decades 1970,2000 --countries BRA,FRA,JPN --moods WEIRD,FAST,SLOW`
 
 ### Directly from repository 
 You can run it with `cargo run` and `cargo run -- [options]`
