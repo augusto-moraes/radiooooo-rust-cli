@@ -237,8 +237,9 @@ async fn play_loop (
         // print!("\n{:?}\n", status);
 
         if !status.success() {
+            println!();
             if status.code() == Some(4) {
-                println!("{}","See you ;)".green());
+                println!("{}", "See you ;)".green());
                 break Ok(());
             }
             log::error!("mpv exited with {}", status);
