@@ -6,7 +6,7 @@ use serde_json::json;
 use tokio::signal;
 
 const SONG_URL: &str = "https://radiooooo.com/play";
-const FORMAT: &str = "mpeg";
+// const FORMAT: &str = "mpeg";
 const MODE: &str = "explore";
 
 use clap::{Parser, ArgAction};
@@ -48,14 +48,14 @@ impl Cli {
     }
 }
 
-fn default_player() -> &'static str {
-    // if cfg!(target_os = "macos") {
-    //     "play"
-    // } else {
-    //     "mpv"
-    // }
-    "mpv"
-}
+// fn default_player() -> &'static str {
+//     // if cfg!(target_os = "macos") {
+//     //     "play"
+//     // } else {
+//     //     "mpv"
+//     // }
+//     "mpv"
+// }
 
 #[derive(Debug, Deserialize)]
 struct ApiResponse {
@@ -68,25 +68,25 @@ struct Links {
     mpeg: Option<String>,
 }
 
-use inquire::Select;
+use inquire::MultiSelect;
 
 async fn run_interactive(cli: Cli) {
-    let decades = Select::new(
-        "Select decade(s):",
+    let decades = MultiSelect::new(
+        "Select decade(s): (space selects, enter to confirm)",
         vec!["1920","1930","1940","1950", "1960", "1970", "1980", "1990", "2000", "2010", "2020"],
     )
     .prompt()
     .unwrap();
 
-    let moods = Select::new(
-        "Select mood:",
+    let moods = MultiSelect::new(
+        "Select mood: (space selects, enter to confirm)",
         vec!["SLOW", "FAST", "WEIRD"],
     )
     .prompt()
     .unwrap();
 
-    let countries = Select::new(
-        "Select country:",
+    let countries = MultiSelect::new(
+        "Select country: (space selects, enter to confirm)",
         vec!["FRA", "USA", "ITA", "JPN", "BRA", "GBR", 
             "DEU", "ESP", "RUS", "CAN", "MEX", "IND" , 
             "CHN", "AUS" , "ARG" , "KOR", "SWE", "NLD", 
@@ -103,12 +103,12 @@ async fn run_interactive(cli: Cli) {
     println!(
         "{} {} / {} / {}",
         "Playing".green(),
-        decades.yellow(),
-        moods.yellow(),
-        countries.yellow()
+        decades.join(", ").yellow(),
+        moods.join(", ").yellow(),
+        countries.join(", ").yellow()
     );
 
-    play_loop(
+    let _ = play_loop(
         &cli.player,
         decades,
         moods,
@@ -122,7 +122,11 @@ async fn run_direct(cli: Cli) {
     let moods = cli.moods.expect("Missing --moods");
     let countries = cli.countries.expect("Missing --countries");
 
-    play_loop(&cli.player, &decades, &moods, &countries).await;
+    let decades: Vec<&str> = decades.split(',').collect();
+    let moods: Vec<&str> = moods.split(',').collect();
+    let countries: Vec<&str> = countries.split(',').collect();
+
+    let _ = play_loop(&cli.player, decades, moods, countries).await;
 }
 
 
@@ -130,9 +134,9 @@ use std::process::{Command, Stdio};
 
 async fn play_loop (
     player: &str,
-    decades: &str,
-    moods: &str,
-    countries: &str,
+    decades: Vec<&str>,
+    moods: Vec<&str>,
+    countries: Vec<&str>,
 )   -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new();
 
@@ -141,12 +145,14 @@ async fn play_loop (
 
         println!(
             "Fetching a new song for {} - {} - {}",
-            decades, moods, countries
+            decades.join(", ").yellow(),
+            moods.join(", ").yellow(),
+            countries.join(", ").yellow()
         );
 
-        let countries: Vec<&str> = countries.split(',').collect();
-        let decades: Vec<&str> = decades.split(',').collect();
-        let moods: Vec<&str> = moods.split(',').collect();
+        // let countries: Vec<&str> = countries.split(',').collect();
+        // let decades: Vec<&str> = decades.split(',').collect();
+        // let moods: Vec<&str> = moods.split(',').collect();
 
         let payload = json!({
             "mode": MODE,
@@ -198,7 +204,6 @@ async fn play_loop (
         }
     }
 }
-
 
 #[tokio::main]
 async fn main() {
