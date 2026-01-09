@@ -1,4 +1,10 @@
 // cargo run -- --decades 1960,1980 --moods SLOW,FAST --countries FRA,ITA --player mpv
+// cargo run
+
+/*
+cargo build --release
+sudo cp "./target/release/radiooooo-rust-cli" "/usr/bin/radiooooo"
+*/
 
 use reqwest::Client;
 use serde::Deserialize;
@@ -31,6 +37,13 @@ pub struct Cli {
     /// Audio player
     #[arg(long, default_value = "mpv")]
     pub player: String,
+
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Play songs in random order (default: false)"
+    )]
+    pub random: bool,
 
     /// Verbosity (-v, -vv, -vvv)
     #[arg(short, long, action = ArgAction::Count)]
@@ -71,9 +84,11 @@ struct Links {
 use inquire::MultiSelect;
 
 async fn run_interactive(cli: Cli) {
+    println!("{}", "[Info] Letting selections empty to selects options".cyan());
     let decades = MultiSelect::new(
         "Select decade(s): (space selects, enter to confirm)",
-        vec!["1920","1930","1940","1950", "1960", "1970", "1980", "1990", "2000", "2010", "2020"],
+        vec!["1900", "1910", "1920", "1930", "1940", "1950", "1960", 
+                      "1970", "1980", "1990", "2000", "2010", "2020", "2070"],
     )
     .prompt()
     .unwrap();
@@ -82,7 +97,7 @@ async fn run_interactive(cli: Cli) {
         "Select mood: (space selects, enter to confirm)",
         vec!["SLOW", "FAST", "WEIRD"],
     )
-    .prompt()
+    .prompt() 
     .unwrap();
 
     let countries = MultiSelect::new(
@@ -95,18 +110,17 @@ async fn run_interactive(cli: Cli) {
             "HUN", "ROU", "BGR", "SRB", "UKR", "BLR",
             "EGY", "ZAF", "NGA", "KEN", "MAR", "TUN",
             "SAU", "ISR", "ARE", "IRN", "PAK", "BGD",
+            "THA", "VNM", "IDN", "PHL", "NZL", "SGP", 
+            "HKG", "TWN", "COL", "PER", "CHL", "VEN",
+            "MYS", "LKA", "NPL", "LBN", "JOR", "KWT"
         ],
     )
     .prompt()
     .unwrap();
 
-    println!(
-        "{} {} / {} / {}",
-        "Playing".green(),
-        decades.join(", ").yellow(),
-        moods.join(", ").yellow(),
-        countries.join(", ").yellow()
-    );
+    let moods: Vec<&str> = moods.is_empty()
+        .then(|| vec!["SLOW", "FAST", "WEIRD"])
+        .unwrap_or_else(|| moods.iter().map(|s| *s).collect());
 
     let _ = play_loop(
         &cli.player,
@@ -118,6 +132,21 @@ async fn run_interactive(cli: Cli) {
 }
 
 async fn run_direct(cli: Cli) {
+
+    if cli.random {
+        println!("{}", "[Info] Random mode selected, all options will be used".cyan());
+        println!("{}", "       Bon Voyage !!".cyan().bold());
+
+        let _ = play_loop(
+            &cli.player,
+            vec![],
+            vec!["SLOW", "FAST", "WEIRD"],
+            vec![],
+        )
+        .await;
+        return;
+    }
+
     let decades = cli.decades.expect("Missing --decades");
     let moods = cli.moods.expect("Missing --moods");
     let countries = cli.countries.expect("Missing --countries");
@@ -143,16 +172,19 @@ async fn play_loop (
     loop {
         log::info!("Fetching song…");
 
+        println!();
         println!(
-            "Fetching a new song for {} - {} - {}",
-            decades.join(", ").yellow(),
+            "{} {} - {} - {}",
+            "Feching a new song for".green(),
+            decades.is_empty()
+                .then(|| "ALL DECADES".yellow().to_string())
+                .unwrap_or_else(|| decades.join(", ").yellow().to_string()),
+            
             moods.join(", ").yellow(),
-            countries.join(", ").yellow()
+            countries.is_empty()
+                .then(|| "ALL COUNTRIES".yellow().to_string())
+                .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
         );
-
-        // let countries: Vec<&str> = countries.split(',').collect();
-        // let decades: Vec<&str> = decades.split(',').collect();
-        // let moods: Vec<&str> = moods.split(',').collect();
 
         let payload = json!({
             "mode": MODE,
@@ -190,6 +222,10 @@ async fn play_loop (
             song_url.blue().italic()
         );
 
+        print!("{}{}{}", "Press ".magenta(), "Ctrl+C".magenta().bold(), " to exit ".magenta());
+        println!("{}{}{}", "or ".magenta(), "q".magenta().bold(), " to skip to the next song".magenta());
+        println!();
+
         let status = Command::new(player)
             .arg("--no-video")
             .arg(&song_url)
@@ -198,7 +234,13 @@ async fn play_loop (
             .status()
             .expect("Failed to start mpv");
 
+        // print!("\n{:?}\n", status);
+
         if !status.success() {
+            if status.code() == Some(4) {
+                println!("{}","See you ;)".green());
+                break Ok(());
+            }
             log::error!("mpv exited with {}", status);
             break Ok(());
         }
@@ -219,7 +261,16 @@ async fn main() {
         env!("CARGO_PKG_VERSION").bright_black()
     );
 
-    if cli.decades.is_none() || cli.moods.is_none() || cli.countries.is_none() {
+    println!(
+        "{}{}{}{}{}{}{}{}\n{}",
+        "Welcome to ",
+        "radi".blue().bold(), "o".bold().red(), "o".bold().blue(),
+        "o".bold().green(), "o".bold().magenta(), "o".bold().cyan(),
+        "-cli".blue().bold(),
+        "A command-line client made on RUST for radiooooo.com".bright_black()
+    );
+
+    if !cli.random && (cli.decades.is_none() || cli.moods.is_none() || cli.countries.is_none()) {
         run_interactive(cli).await;
     } else {
         run_direct(cli).await;
