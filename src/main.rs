@@ -38,10 +38,13 @@ pub struct Cli {
     #[arg(long, default_value = "mpv")]
     pub player: String,
 
+    // --random or -r
     #[arg(
         long,
         default_value_t = false,
-        help = "Play songs in random order (default: false)"
+        help = "Play songs in random order (default: false)",
+        action = ArgAction::SetTrue,
+        short = 'r',
     )]
     pub random: bool,
 
@@ -134,6 +137,7 @@ async fn run_interactive(cli: Cli) {
 async fn run_direct(cli: Cli) {
 
     if cli.random {
+        println!();
         println!("{}", "[Info] Random mode selected, all options will be used".cyan());
         println!("{}", "       Bon Voyage !!".cyan().bold());
 
@@ -261,6 +265,8 @@ async fn main() {
         "radiooooo-cli".bold().green(),
         env!("CARGO_PKG_VERSION").bright_black()
     );
+
+    println!();
 
     println!(
         "{}{}{}{}{}{}{}{}\n{}",
