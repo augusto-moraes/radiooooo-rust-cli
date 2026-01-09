@@ -3,7 +3,8 @@ A command-line client made on RUST for radiooooo.com
 
 ## Install
 1. Clone this repository
-2. run `cargo build --release` and `sudo cp "./target/release/radiooooo-rust-cli" "/usr/local/bin/radiooooo"`
+2. run `cargo build --release`
+3. then `sudo cp "./target/release/radiooooo-rust-cli" "/usr/local/bin/radiooooo"`
 
 ## Use it
 ### Once installed
