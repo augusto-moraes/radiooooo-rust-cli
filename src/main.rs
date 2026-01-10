@@ -173,7 +173,7 @@ async fn select_island() -> Island {
 }
 
 async fn run_interactive(cli: Cli) {
-    println!("{}", "[Info] Letting selections empty to selects options".cyan());
+    println!("{}", "[Info] Letting selections empty selects all options".cyan());
     let mode = Select::new(
         "Select mode:",
         vec!["explore", "islands"],
