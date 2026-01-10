@@ -176,7 +176,7 @@ async fn run_interactive(cli: Cli) {
     println!("{}", "[Info] Letting selections empty selects all options".cyan());
     let mode = Select::new(
         "Select mode:",
-        vec!["explore", "islands"],
+        vec!["explore", "islands", "taxi", "random"],
     )
     .prompt()
     .unwrap();
@@ -194,9 +194,7 @@ async fn run_interactive(cli: Cli) {
     .prompt() 
     .unwrap();
 
-    let decades = if mode == "islands" {
-        vec![]
-    } else {
+    let decades = if mode == "explore" || mode == "taxi" {
         MultiSelect::new(
             "Select decade(s): (space selects, enter to confirm)",
             vec!["1900", "1910", "1920", "1930", "1940", "1950", "1960", 
@@ -204,11 +202,11 @@ async fn run_interactive(cli: Cli) {
         )
         .prompt()
         .unwrap()
+    } else {
+        vec![]
     };
 
-    let countries = if mode == "islands" {
-        vec![]
-    } else {
+    let countries = if mode == "explore" || mode == "taxi" {
         MultiSelect::new(
             "Select country: (space selects, enter to confirm)",
             vec!["FRA", "USA", "ITA", "JPN", "BRA", "GBR", 
@@ -226,6 +224,8 @@ async fn run_interactive(cli: Cli) {
         )
         .prompt()
         .unwrap()
+    } else {
+        vec![]
     };
 
     let moods: Vec<&str> = moods.is_empty()
@@ -281,7 +281,7 @@ async fn run_direct(cli: Cli) {
 }
 
 
-use std::process::{Command, Stdio};
+use std::{process::{Command, Stdio}, vec};
 
 async fn play_loop (
     player: &str,
@@ -297,45 +297,85 @@ async fn play_loop (
         log::info!("Fetching song…");
 
         println!();
-        let payload = if mode == "islands" {
-            let island = island.as_ref().expect("Island must be provided in islands mode");
-            println!("{} {}[{}] {} {}", "Feching a new song from the".green(), 
-                    island.name.cyan().bold(), island.category.as_deref().unwrap_or("other").cyan() ,
-                    "ISLAND w/ moods".green(), moods.join(", ").yellow());
+        
+        let payload = match mode {
+            "explore" => {
+                println!(
+                    "{} {} - {} - {}",
+                    "Feching a new song for".green(),
+                    decades.is_empty()
+                        .then(|| "ALL DECADES".yellow().to_string())
+                        .unwrap_or_else(|| decades.join(", ").yellow().to_string()),
+                    
+                    moods.join(", ").yellow(),
+                    countries.is_empty()
+                        .then(|| "ALL COUNTRIES".yellow().to_string())
+                        .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
+                );
+                json!({
+                    "mode": mode,
+                    "moods": moods,
+                    "decades": decades,
+                    "isocodes": countries
+                })
+            },
+            "islands" => {
+                let island = island.as_ref().expect("Island must be provided in islands mode");
+                println!("{} {}[{}] {} {}", "Feching a new song from the".green(), 
+                        island.name.cyan().bold(), island.category.as_deref().unwrap_or("other").cyan() ,
+                        "ISLAND with moods".green(), moods.join(", ").yellow());
 
-            json!({
-                "mode": mode,
-                "island": island.id,
-                "moods": moods
-            })
-        } else {
-            println!(
-                "{} {} - {} - {}",
-                "Feching a new song for".green(),
-                decades.is_empty()
-                    .then(|| "ALL DECADES".yellow().to_string())
-                    .unwrap_or_else(|| decades.join(", ").yellow().to_string()),
-                
-                moods.join(", ").yellow(),
-                countries.is_empty()
-                    .then(|| "ALL COUNTRIES".yellow().to_string())
-                    .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
-            );
-            json!({
-                "mode": mode,
-                "moods": moods,
-                "decades": decades,
-                "isocodes": countries
-            })
+                json!({
+                    "mode": mode,
+                    "island": island.id,
+                    "moods": moods
+                })
+            },
+            "taxi" => {
+                println!(
+                    "{} {} {} {} - {} - {}",
+                    "Playing in".green(),
+                    "TAXI MODE".yellow().bold(),
+                    "with".green(),
+                    decades.is_empty()
+                        .then(|| "ALL DECADES".yellow().to_string())
+                        .unwrap_or_else(|| decades.join(", ").yellow().to_string()),
+                    
+                    moods.join(", ").yellow(),
+                    countries.is_empty()
+                        .then(|| "ALL COUNTRIES".yellow().to_string())
+                        .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
+                );
+                json!({
+                    "mode": mode,
+                    "moods": moods,
+                    "decades": decades,
+                    "isocodes": countries
+                })
+            },
+            _ => {
+                println!(
+                    "{} {} {} {}",
+                    "Playing in".green(),
+                    "SHUFFLE MODE".cyan().bold(),
+                    "with moods".green(),
+                    moods.join(", ").yellow()
+                );
+                json!({
+                    "mode": mode,
+                    "moods": moods
+                })
+            }
         };
 
+        let url = if mode == "random" {SONG_URL.to_owned() + "/random"} else {SONG_URL.to_string()};
         let response = tokio::select! {
-            res = client.post(SONG_URL).json(&payload).send() => res?,
+            res = client.post(url).json(&payload).send() => res?,
             _ = signal::ctrl_c() => {
                 println!("\nExited!");
                 break Ok(());
             }
-        };
+        };     
 
         let json_resp: ApiResponse = response.json().await?;
 
