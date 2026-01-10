@@ -304,7 +304,7 @@ async fn play_loop (
                     
                     moods.join(", ").yellow(),
                     countries.is_empty()
-                        .then(|| "ALL COUNTRIES".yellow().to_string())
+                        .then(|| "EVERYWHERE".yellow().to_string())
                         .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
                 );
                 json!({
@@ -339,7 +339,7 @@ async fn play_loop (
                     
                     moods.join(", ").yellow(),
                     countries.is_empty()
-                        .then(|| "ALL COUNTRIES".yellow().to_string())
+                        .then(|| "EVERYWHERE".yellow().to_string())
                         .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
                 );
                 json!({
