@@ -358,7 +358,7 @@ async fn play_loop (
                 );
                 json!({
                     "mode": mode,
-                    "moods": moods
+                    "moods": moods // TODO : it looks like shuffle mode only requires moods but ignores it
                 })
             }
         };
