@@ -241,11 +241,15 @@ async fn run_direct(cli: Cli) {
         println!("{}", "[Info] Random mode selected, all options will be used".cyan());
         println!("{}", "       Bon Voyage !!".cyan().bold());
 
+        let moods = cli.moods.as_ref()
+            .map(|s| s.split(',').map(|m| m.to_uppercase()).collect())
+            .unwrap_or_else(|| vec!["SLOW".to_string(), "FAST".to_string(), "WEIRD".to_string()]);
+
         let _ = play_loop(
             &cli.player,
             "random", // TODO: study witch algorithm is better : /play/random or /play with everything selected
             vec![],
-            vec!["SLOW", "FAST", "WEIRD"],
+            moods.iter().map(|s| s.as_str()).collect(), // see if can be optimized
             vec![],
             None
         )
