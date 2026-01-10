@@ -299,9 +299,10 @@ async fn play_loop (
         println!();
         let payload = if mode == "islands" {
             let island = island.as_ref().expect("Island must be provided in islands mode");
-            println!("{} {}[{}] {}", "Feching a new song from the".green(), 
-                    island.name.cyan(), island.category.as_deref().unwrap_or("other").cyan() ,"ISLAND".green());
-                    
+            println!("{} {}[{}] {} {}", "Feching a new song from the".green(), 
+                    island.name.cyan().bold(), island.category.as_deref().unwrap_or("other").cyan() ,
+                    "ISLAND w/ moods".green(), moods.join(", ").yellow());
+
             json!({
                 "mode": mode,
                 "island": island.id,
