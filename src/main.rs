@@ -10,62 +10,18 @@ use reqwest::Client;
 use serde::Deserialize;
 use serde_json::json;
 use tokio::signal;
+use clap::{Parser};
+use colored::*;
+use inquire::{Select, MultiSelect};
+use std::{process::{Command, Stdio}, vec};
+
+mod cli;
+use crate::cli::Cli;
+
+mod island_manager;
+use crate::island_manager::{select_island, Island};
 
 const SONG_URL: &str = "https://radiooooo.com/play";
-const ISLAND_MAP_URL: &str = "https://app.radiooooo.com/island/map";
-
-use clap::{Parser, ArgAction};
-use colored::*;
-use log::LevelFilter;
-
-#[derive(Parser, Debug)]
-#[command(author, version, about)]
-pub struct Cli {
-    // MODE
-    #[arg(long, default_value = "explore")]
-    pub mode: String,
-
-    /// Decades (comma separated)
-    #[arg(long, short = 'd')]
-    pub decades: Option<String>,
-
-    /// Moods (comma separated)
-    #[arg(long, short = 'm')]
-    pub moods: Option<String>,
-
-    /// Countries (comma separated ISO codes)
-    #[arg(long, short = 'c')]
-    pub countries: Option<String>,
-
-    /// Audio player
-    #[arg(long, default_value = "mpv")]
-    pub player: String,
-
-    // --random or -r
-    #[arg(
-        long,
-        default_value_t = false,
-        help = "Play songs in random order (default: false)",
-        action = ArgAction::SetTrue,
-        short = 'r',
-    )]
-    pub random: bool,
-
-    /// Verbosity (-v, -vv, -vvv)
-    #[arg(short, long, action = ArgAction::Count)]
-    pub verbose: u8,
-}
-
-impl Cli {
-    pub fn log_level(&self) -> LevelFilter {
-        match self.verbose {
-            0 => LevelFilter::Warn,
-            1 => LevelFilter::Info,
-            2 => LevelFilter::Debug,
-            _ => LevelFilter::Trace,
-        }
-    }
-}
 
 #[derive(Debug, Deserialize)]
 struct ApiResponse {
@@ -81,86 +37,6 @@ struct ApiResponse {
 #[derive(Debug, Deserialize)]
 struct Links {
     mpeg: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Modified {
-    date: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct Island {
-    #[serde(rename = "_id")]
-    id: String,
-
-    name: String,
-
-    category: Option<String>,
-
-    modified: Option<Modified>,
-}
-
-use chrono::{DateTime, Utc};
-
-fn island_modified_timestamp(island: &Island) -> DateTime<Utc> {
-    island
-        .modified
-        .as_ref()
-        .and_then(|m| DateTime::parse_from_rfc3339(&m.date).ok())
-        .map(|dt| dt.with_timezone(&Utc))
-        .unwrap_or(DateTime::<Utc>::MIN_UTC)
-}
-
-fn sort_islands_by_modified(mut islands: Vec<Island>) -> Vec<Island> {
-    islands.sort_by(|a, b| {
-        island_modified_timestamp(b).cmp(&island_modified_timestamp(a))
-    });
-    islands
-}
-
-async fn fetch_islands() -> Result<Vec<Island>, reqwest::Error> {
-    let client = Client::new();
-
-    client
-        .get(ISLAND_MAP_URL)
-        .send()
-        .await?
-        .json::<Vec<Island>>()
-        .await
-}
-
-fn island_labels(islands: &[Island]) -> Vec<String> {
-    islands
-        .iter()
-        .map(|i| {
-            let category = i.category.as_deref().unwrap_or("other");
-            format!("{} [{}]", i.name, category)
-        })
-        .collect()
-}
-
-use inquire::{MultiSelect, Select};
-
-async fn select_island() -> Island {
-    let islands = fetch_islands()
-        .await
-        .expect("Failed to fetch islands");
-
-    let islands = sort_islands_by_modified(islands);
-    let labels = island_labels(&islands);
-
-    let selected_label = Select::new(
-        "Select an island:",
-        labels,
-    )
-    .prompt()
-    .expect("Selection aborted");
-
-    // Map label → Island
-    islands
-        .into_iter()
-        .find(|i| selected_label.starts_with(&i.name))
-        .expect("Selected island not found")
 }
 
 async fn run_interactive(cli: Cli) {
@@ -274,9 +150,6 @@ async fn run_direct(cli: Cli) {
 
     let _ = play_loop(&cli.player, &cli.mode, decades, moods, countries, None).await;
 }
-
-
-use std::{process::{Command, Stdio}, vec};
 
 async fn play_loop (
     player: &str,
@@ -458,6 +331,6 @@ async fn main() {
     if cli.random || cli.decades.is_some() || cli.moods.is_some() || cli.countries.is_some() {
         run_direct(cli).await;
     } else {
-       run_interactive(cli).await; 
+        run_interactive(cli).await; 
     }
 }
