@@ -249,7 +249,7 @@ async fn run_direct(cli: Cli) {
             &cli.player,
             "random", // TODO: study witch algorithm is better : /play/random or /play with everything selected
             vec![],
-            vec![],
+            vec!["SLOW", "FAST", "WEIRD"],
             vec![],
             None
         )
