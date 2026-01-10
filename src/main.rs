@@ -12,8 +12,7 @@ use serde_json::json;
 use tokio::signal;
 
 const SONG_URL: &str = "https://radiooooo.com/play";
-// const FORMAT: &str = "mpeg";
-const MODE: &str = "explore";
+const ISLAND_MAP_URL: &str = "https://app.radiooooo.com/island/map";
 
 use clap::{Parser, ArgAction};
 use colored::*;
@@ -22,6 +21,10 @@ use log::LevelFilter;
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 pub struct Cli {
+    // MODE
+    #[arg(long, default_value = "explore")]
+    pub mode: String,
+
     /// Decades (comma separated)
     #[arg(long, short = 'd')]
     pub decades: Option<String>,
@@ -75,17 +78,114 @@ struct Links {
     mpeg: Option<String>,
 }
 
-use inquire::MultiSelect;
+#[derive(Debug, Deserialize)]
+struct Modified {
+    date: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct Island {
+    #[serde(rename = "_id")]
+    id: String,
+
+    name: String,
+
+    // apiid: Option<String>,
+
+    category: Option<String>,
+
+    // onmap: Option<bool>,
+    // enabled: Option<bool>,
+    // free: Option<bool>,
+
+    modified: Option<Modified>,
+}
+
+use chrono::{DateTime, Utc};
+
+fn island_modified_timestamp(island: &Island) -> DateTime<Utc> {
+    island
+        .modified
+        .as_ref()
+        .and_then(|m| DateTime::parse_from_rfc3339(&m.date).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or(DateTime::<Utc>::MIN_UTC)
+}
+
+fn sort_islands_by_modified(mut islands: Vec<Island>) -> Vec<Island> {
+    islands.sort_by(|a, b| {
+        island_modified_timestamp(b).cmp(&island_modified_timestamp(a))
+    });
+    islands
+}
+
+async fn fetch_islands() -> Result<Vec<Island>, reqwest::Error> {
+    let client = Client::new();
+
+    client
+        .get(ISLAND_MAP_URL)
+        .send()
+        .await?
+        .json::<Vec<Island>>()
+        .await
+}
+
+// fn usable_islands(islands: Vec<Island>) -> Vec<Island> {
+//     islands
+//         .into_iter()
+//         .filter(|i| i.enabled.unwrap_or(false))
+//         .filter(|i| i.onmap.unwrap_or(false))
+//         .collect()
+// }
+
+fn island_labels(islands: &[Island]) -> Vec<String> {
+    islands
+        .iter()
+        .map(|i| {
+            let category = i.category.as_deref().unwrap_or("other");
+            format!("{} [{}]", i.name, category)
+        })
+        .collect()
+}
+
+use inquire::{MultiSelect, Select};
+
+async fn select_island() -> Island {
+    let islands = fetch_islands()
+        .await
+        .expect("Failed to fetch islands");
+
+    let islands = sort_islands_by_modified(islands);
+    let labels = island_labels(&islands);
+
+    let selected_label = Select::new(
+        "Select an island:",
+        labels,
+    )
+    .prompt()
+    .expect("Selection aborted");
+
+    // Map label → Island
+    islands
+        .into_iter()
+        .find(|i| selected_label.starts_with(&i.name))
+        .expect("Selected island not found")
+}
 
 async fn run_interactive(cli: Cli) {
     println!("{}", "[Info] Letting selections empty to selects options".cyan());
-    let decades = MultiSelect::new(
-        "Select decade(s): (space selects, enter to confirm)",
-        vec!["1900", "1910", "1920", "1930", "1940", "1950", "1960", 
-                      "1970", "1980", "1990", "2000", "2010", "2020", "2070"],
+    let mode = Select::new(
+        "Select mode:",
+        vec!["explore", "islands"],
     )
     .prompt()
     .unwrap();
+
+    let island = if mode == "islands" {
+        Some(select_island().await)
+    } else {
+        None
+    };
 
     let moods = MultiSelect::new(
         "Select mood: (space selects, enter to confirm)",
@@ -94,23 +194,39 @@ async fn run_interactive(cli: Cli) {
     .prompt() 
     .unwrap();
 
-    let countries = MultiSelect::new(
-        "Select country: (space selects, enter to confirm)",
-        vec!["FRA", "USA", "ITA", "JPN", "BRA", "GBR", 
-            "DEU", "ESP", "RUS", "CAN", "MEX", "IND" , 
-            "CHN", "AUS" , "ARG" , "KOR", "SWE", "NLD", 
-            "BEL", "CHE", "AUT", "NOR", "DNK", "FIN",
-            "IRL", "PRT", "GRC", "TUR", "POL", "CZE",
-            "HUN", "ROU", "BGR", "SRB", "UKR", "BLR",
-            "EGY", "ZAF", "NGA", "KEN", "MAR", "TUN",
-            "SAU", "ISR", "ARE", "IRN", "PAK", "BGD",
-            "THA", "VNM", "IDN", "PHL", "NZL", "SGP", 
-            "HKG", "TWN", "COL", "PER", "CHL", "VEN",
-            "MYS", "LKA", "NPL", "LBN", "JOR", "KWT"
-        ],
-    )
-    .prompt()
-    .unwrap();
+    let decades = if mode == "islands" {
+        vec![]
+    } else {
+        MultiSelect::new(
+            "Select decade(s): (space selects, enter to confirm)",
+            vec!["1900", "1910", "1920", "1930", "1940", "1950", "1960", 
+                          "1970", "1980", "1990", "2000", "2010", "2020", "2070"],
+        )
+        .prompt()
+        .unwrap()
+    };
+
+    let countries = if mode == "islands" {
+        vec![]
+    } else {
+        MultiSelect::new(
+            "Select country: (space selects, enter to confirm)",
+            vec!["FRA", "USA", "ITA", "JPN", "BRA", "GBR", 
+                "DEU", "ESP", "RUS", "CAN", "MEX", "IND" , 
+                "CHN", "AUS" , "ARG" , "KOR", "SWE", "NLD", 
+                "BEL", "CHE", "AUT", "NOR", "DNK", "FIN",
+                "IRL", "PRT", "GRC", "TUR", "POL", "CZE",
+                "HUN", "ROU", "BGR", "SRB", "UKR", "BLR",
+                "EGY", "ZAF", "NGA", "KEN", "MAR", "TUN",
+                "SAU", "ISR", "ARE", "IRN", "PAK", "BGD",
+                "THA", "VNM", "IDN", "PHL", "NZL", "SGP", 
+                "HKG", "TWN", "COL", "PER", "CHL", "VEN",
+                "MYS", "LKA", "NPL", "LBN", "JOR", "KWT"
+            ],
+        )
+        .prompt()
+        .unwrap()
+    };
 
     let moods: Vec<&str> = moods.is_empty()
         .then(|| vec!["SLOW", "FAST", "WEIRD"])
@@ -118,9 +234,11 @@ async fn run_interactive(cli: Cli) {
 
     let _ = play_loop(
         &cli.player,
+        mode,
         decades,
         moods,
         countries,
+        island
     )
     .await;
 }
@@ -134,9 +252,11 @@ async fn run_direct(cli: Cli) {
 
         let _ = play_loop(
             &cli.player,
+            &cli.mode,
             vec![],
             vec!["SLOW", "FAST", "WEIRD"],
             vec![],
+            None
         )
         .await;
         return;
@@ -157,7 +277,7 @@ async fn run_direct(cli: Cli) {
     let moods: Vec<&str> = moods.iter().map(|s| s.as_str()).collect();
     let countries: Vec<&str> = countries.iter().map(|s| s.as_str()).collect();
 
-    let _ = play_loop(&cli.player, decades, moods, countries).await;
+    let _ = play_loop(&cli.player, &cli.mode, decades, moods, countries, None).await;
 }
 
 
@@ -165,35 +285,48 @@ use std::process::{Command, Stdio};
 
 async fn play_loop (
     player: &str,
+    mode: &str,
     decades: Vec<&str>,
     moods: Vec<&str>,
     countries: Vec<&str>,
+    island: Option<Island>,
 )   -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new();
+    let client: Client = Client::new();
 
     loop {
         log::info!("Fetching song…");
 
         println!();
-        println!(
-            "{} {} - {} - {}",
-            "Feching a new song for".green(),
-            decades.is_empty()
-                .then(|| "ALL DECADES".yellow().to_string())
-                .unwrap_or_else(|| decades.join(", ").yellow().to_string()),
-            
-            moods.join(", ").yellow(),
-            countries.is_empty()
-                .then(|| "ALL COUNTRIES".yellow().to_string())
-                .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
-        );
-
-        let payload = json!({
-            "mode": MODE,
-            "moods": moods,
-            "decades": decades,
-            "isocodes": countries
-        });
+        let payload = if mode == "islands" {
+            let island = island.as_ref().expect("Island must be provided in islands mode");
+            println!("{} {}[{}] {}", "Feching a new song from the".green(), 
+                    island.name.cyan(), island.category.as_deref().unwrap_or("other").cyan() ,"ISLAND".green());
+                    
+            json!({
+                "mode": mode,
+                "island": island.id,
+                "moods": moods
+            })
+        } else {
+            println!(
+                "{} {} - {} - {}",
+                "Feching a new song for".green(),
+                decades.is_empty()
+                    .then(|| "ALL DECADES".yellow().to_string())
+                    .unwrap_or_else(|| decades.join(", ").yellow().to_string()),
+                
+                moods.join(", ").yellow(),
+                countries.is_empty()
+                    .then(|| "ALL COUNTRIES".yellow().to_string())
+                    .unwrap_or_else(|| countries.join(", ").yellow().to_string()),
+            );
+            json!({
+                "mode": mode,
+                "moods": moods,
+                "decades": decades,
+                "isocodes": countries
+            })
+        };
 
         let response = tokio::select! {
             res = client.post(SONG_URL).json(&payload).send() => res?,
