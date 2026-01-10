@@ -283,6 +283,7 @@ async fn play_loop (
         println!("{}{}{}", "or ".magenta(), "q".magenta().bold(), " to skip to the next song".magenta());
         println!();
 
+        println!("{} {}", "Player:".bright_black(), player.bright_black().bold());
         let status = Command::new(player)
             .arg("--no-video")
             .arg(&song_url)
