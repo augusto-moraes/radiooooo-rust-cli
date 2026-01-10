@@ -71,6 +71,11 @@ impl Cli {
 struct ApiResponse {
     error: Option<String>,
     links: Option<Links>,
+    mood: Option<String>,
+    title: Option<String>,
+    artist: Option<String>,
+    country: Option<String>,
+    year: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -363,6 +368,9 @@ async fn play_loop (
             }
         };     
 
+        // let raw_json = response.text().await?;
+        // println!("Raw API response: {}", raw_json);
+
         let json_resp: ApiResponse = response.json().await?;
 
         if let Some(err) = json_resp.error {
@@ -379,9 +387,19 @@ async fn play_loop (
         };
 
         println!(
-            "{} {}",
+            "{} {} {} {} [{} - {} - {}]",
             "Now playing:".green(),
-            song_url.blue().italic()
+            json_resp.title.unwrap_or_else(|| "Unknown".to_string()).blue().italic(),
+            "by".green(),
+            json_resp.artist.unwrap_or_else(|| "Unknown".to_string()).blue().italic(),
+            json_resp.country.unwrap_or_else(|| "Unknown".to_string()).yellow(),
+            json_resp.year.unwrap_or_else(|| "Unknown".to_string()).yellow(),
+            json_resp.mood.unwrap_or_else(|| "Unknown".to_string()).yellow(),
+        );
+        println!(
+            "{} {}",
+            "Link:".green(),
+            song_url.bright_black().underline()
         );
 
         print!("{}{}{}", "Press ".magenta(), "Ctrl+C".magenta().bold(), " to exit ".magenta());
@@ -395,8 +413,6 @@ async fn play_loop (
             .stdout(Stdio::inherit())
             .status()
             .expect("Failed to start mpv");
-
-        // print!("\n{:?}\n", status);
 
         if !status.success() {
             println!();
