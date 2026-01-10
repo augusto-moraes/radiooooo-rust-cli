@@ -178,12 +178,16 @@ async fn run_interactive(cli: Cli) {
         None
     };
 
-    let moods = MultiSelect::new(
-        "Select mood: (space selects, enter to confirm)",
-        vec!["SLOW", "FAST", "WEIRD"],
-    )
-    .prompt() 
-    .unwrap();
+    let moods = if mode != "random" {
+        MultiSelect::new(
+            "Select mood: (space selects, enter to confirm)",
+            vec!["SLOW", "FAST", "WEIRD"],
+        )
+        .prompt() 
+        .unwrap()
+    } else {
+        vec![]
+    };
 
     let decades = if mode == "explore" || mode == "taxi" {
         MultiSelect::new(
@@ -241,15 +245,11 @@ async fn run_direct(cli: Cli) {
         println!("{}", "[Info] Random mode selected, all options will be used".cyan());
         println!("{}", "       Bon Voyage !!".cyan().bold());
 
-        let moods = cli.moods.as_ref()
-            .map(|s| s.split(',').map(|m| m.to_uppercase()).collect())
-            .unwrap_or_else(|| vec!["SLOW".to_string(), "FAST".to_string(), "WEIRD".to_string()]);
-
         let _ = play_loop(
             &cli.player,
             "random", // TODO: study witch algorithm is better : /play/random or /play with everything selected
             vec![],
-            moods.iter().map(|s| s.as_str()).collect(), // see if can be optimized
+            vec![],
             vec![],
             None
         )
@@ -297,7 +297,7 @@ async fn play_loop (
             "explore" => {
                 println!(
                     "{} {} - {} - {}",
-                    "Feching a new song for".green(),
+                    "Exploring 🧭🌎 songs within".green(),
                     decades.is_empty()
                         .then(|| "ALL DECADES".yellow().to_string())
                         .unwrap_or_else(|| decades.join(", ").yellow().to_string()),
@@ -318,7 +318,7 @@ async fn play_loop (
                 let island = island.as_ref().expect("Island must be provided in islands mode");
                 println!("{} {}[{}] {} {}", "Feching a new song from the".green(), 
                         island.name.cyan().bold(), island.category.as_deref().unwrap_or("other").cyan() ,
-                        "ISLAND with moods".green(), moods.join(", ").yellow());
+                        "ISLAND 🏝️🌞 with moods".green(), moods.join(", ").yellow());
 
                 json!({
                     "mode": mode,
@@ -328,9 +328,10 @@ async fn play_loop (
             },
             "taxi" => {
                 println!(
-                    "{} {} {} {} - {} - {}",
+                    "{} {} {} {} {} - {} - {}",
                     "Playing in".green(),
                     "TAXI MODE".yellow().bold(),
+                    "🚖🌎",
                     "with".green(),
                     decades.is_empty()
                         .then(|| "ALL DECADES".yellow().to_string())
@@ -350,11 +351,10 @@ async fn play_loop (
             },
             _ => {
                 println!(
-                    "{} {} {} {}",
+                    "{} {} {}",
                     "Playing in".green(),
                     "SHUFFLE MODE".cyan().bold(),
-                    "with moods".green(),
-                    moods.join(", ").yellow()
+                    "🚀✨"
                 );
                 json!({
                     "mode": mode,
