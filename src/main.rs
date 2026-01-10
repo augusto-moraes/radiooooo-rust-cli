@@ -90,13 +90,7 @@ struct Island {
 
     name: String,
 
-    // apiid: Option<String>,
-
     category: Option<String>,
-
-    // onmap: Option<bool>,
-    // enabled: Option<bool>,
-    // free: Option<bool>,
 
     modified: Option<Modified>,
 }
@@ -129,14 +123,6 @@ async fn fetch_islands() -> Result<Vec<Island>, reqwest::Error> {
         .json::<Vec<Island>>()
         .await
 }
-
-// fn usable_islands(islands: Vec<Island>) -> Vec<Island> {
-//     islands
-//         .into_iter()
-//         .filter(|i| i.enabled.unwrap_or(false))
-//         .filter(|i| i.onmap.unwrap_or(false))
-//         .collect()
-// }
 
 fn island_labels(islands: &[Island]) -> Vec<String> {
     islands
