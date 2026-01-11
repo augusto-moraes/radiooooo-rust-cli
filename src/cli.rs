@@ -34,6 +34,16 @@ pub struct Cli {
     )]
     pub random: bool,
 
+    /// Explore mode
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Explore mode (default: false)",
+        action = ArgAction::SetTrue,
+        short = 'e',
+    )]
+    pub explore: bool,
+
     /// Verbosity (-v, -vv, -vvv)
     #[arg(short, long, action = ArgAction::Count)]
     pub verbose: u8,

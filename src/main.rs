@@ -7,6 +7,8 @@ Installation:
 Usage:
     radiooooo [-r] [--mode MODE] ... 
     (you might have to install mpv player if you don't have it yet)
+    run : brew install mpv  (macOS)
+    run : sudo apt install mpv (Debian/Ubuntu)
 
     consider adding the line `NEXT quit` to your mpv config file (~/.config/mpv/mpv.conf) 
     to allow skiping songs with your headphone remotelly
@@ -336,7 +338,7 @@ async fn main() {
         "A command-line client made on RUST for radiooooo.com".bright_black()
     );
 
-    if cli.random || cli.decades.is_some() || cli.moods.is_some() || cli.countries.is_some() {
+    if cli.explore || cli.random || cli.decades.is_some() || cli.moods.is_some() || cli.countries.is_some() {
         run_direct(cli).await;
     } else {
         run_interactive(cli).await; 
