@@ -2,8 +2,15 @@
 // cargo run
 
 /*
-cargo build --release
-sudo cp "./target/release/radiooooo-rust-cli" "/usr/local/bin/radiooooo"
+Installation:
+    cargo build --release
+    sudo cp "./target/release/radiooooo-rust-cli" "/usr/local/bin/radiooooo"
+Usage:
+    radiooooo [-r] [--mode MODE] ... 
+    (you might have to install mpv player if you don't have it yet)
+
+    consider adding the line `NEXT quit` to your mpv config file (~/.config/mpv/mpv.conf) 
+    to allow skiping songs with your headphone remotelly
 */
 
 use reqwest::Client;
@@ -265,7 +272,7 @@ async fn play_loop (
 
         println!(
             "{} {} {} {} [{} - {} - {}]",
-            "Now playing:".green(),
+            "Now playing".green(),
             json_resp.title.unwrap_or_else(|| "Unknown".to_string()).blue().italic(),
             "by".green(),
             json_resp.artist.unwrap_or_else(|| "Unknown".to_string()).blue().italic(),
@@ -284,13 +291,14 @@ async fn play_loop (
         println!();
 
         println!("{} {}", "Player:".bright_black(), player.bright_black().bold());
+
         let status = Command::new(player)
             .arg("--no-video")
             .arg(&song_url)
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
             .status()
-            .expect("Failed to start mpv");
+            .expect("[Error] Failed to start mpv. Do you have mpv installed?");
 
         if !status.success() {
             println!();
