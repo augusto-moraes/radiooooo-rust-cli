@@ -2,9 +2,8 @@
 // cargo run
 
 /*
-Installation:
-    cargo build --release
-    sudo cp "./target/release/radiooooo-rust-cli" "/usr/local/bin/radiooooo"
+Installation: 
+    cargo build --release && cp "./target/release/radiooooo-rust-cli" "/usr/local/bin/radiooooo"
 Usage:
     radiooooo [-r] [--mode MODE] ... 
     (you might have to install mpv player if you don't have it yet)
