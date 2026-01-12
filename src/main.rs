@@ -24,12 +24,20 @@ use inquire::{Select, MultiSelect};
 use std::{process::{Command, Stdio}, vec};
 
 mod cli;
-use crate::cli::Cli;
+use crate::{cli::Cli, playlist_manager::PlaylistInfo};
 
 mod island_manager;
 use crate::island_manager::{select_island, Island};
 
+mod playlist_manager;
+
 const SONG_URL: &str = "https://radiooooo.com/play";
+
+//  Example of a favorite track query
+//  https://app.radiooooo.com/track/play/616be20f544d9e5ff55f39f2
+
+//  and list of a users favorites
+//  https://app.radiooooo.com/contributor/likes/65aad4a7b041ab7470eaa5c1?&mood[]=SLOW&mood[]=FAST&shuffle=true&page=1&size=100
 
 #[derive(Debug, Deserialize)]
 struct ApiResponse {
@@ -51,10 +59,126 @@ async fn run_interactive(cli: Cli) {
     println!("{}", "[Info] Letting selections empty selects all options".cyan());
     let mode = Select::new(
         "Select mode:",
-        vec!["explore", "islands", "taxi", "random"],
+        vec!["explore", "islands", "playlists", "taxi", "random"],
     )
     .prompt()
     .unwrap();
+
+    // TODO : PLAYLISTS WILL ONLY WORK IF THE USER IS LOGGED IN
+    if mode == "playlists" {
+        println!();
+        println!("{}", "[Info] Playlists mode selected".cyan());
+        println!("{}", "       ⚠️ Attention ⚠️ Your playlist must be published to appear here".yellow());
+        println!("{}", "       Fetching your playlists...".cyan().bold());
+
+        let playlists = match crate::playlist_manager::fetch_playlists().await {
+            Ok(pls) => pls,
+            Err(e) => {
+                eprintln!("Error fetching playlists: {}", e);
+                return;
+            }
+        };
+
+        let mut playlist_names: Vec<String> = playlists.iter().map(|pl| pl.name.clone()).collect();
+        playlist_names.insert(0, "Liked songs (wont work if not logged in)".to_string());
+        
+
+        let selected_playlist = Select::new("Select a playlist:", playlist_names)
+            .prompt()
+            .unwrap();
+
+        // Wont work if user is not logged in
+        if selected_playlist == "Liked songs (wont work if not logged in)" {
+            let liked_songs = crate::playlist_manager::fetch_liked_songs().await.unwrap_or_default();
+
+            let song_names: Vec<String> = liked_songs
+                                            .iter()
+                                            // .map(|s| format!("{} by {}", s.title, s.artist))
+                                            .map(|s| s.id.clone())
+                                            .collect();
+
+            let selected_song = Select::new("Select a song", song_names)
+                .prompt()
+                .unwrap();
+
+            let selected_song = liked_songs
+                .into_iter()
+                .find(|t| t.id == selected_song)
+                .expect("Selected playlist not found");
+
+            let track = crate::playlist_manager::fetch_track(&selected_song.id).await.unwrap();
+
+            println!(
+                "{} {} {} [{} - {} - {}]",
+                "Now playing".green(),
+                track.title.blue().italic(),
+                "by".green(),
+                track.country.yellow(),
+                track.year.yellow(),
+                track.mood.yellow(),
+            );
+
+            let status = Command::new(&cli.player)
+                .arg("--no-video")
+                .arg(track.links.and_then(|l| l.mpeg).unwrap_or_default())
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .status()
+                .expect("[Error] Failed to start mpv. Do you have mpv installed?");
+
+            if !status.success() {
+                log::error!("mpv exited with {}", status);
+            }
+            return;
+        }
+
+        let playlist = playlists
+                .into_iter()
+                .find(|pl| pl.name == selected_playlist)
+                .expect("Selected playlist not found");
+
+
+        println!();
+        println!(
+            "{} {}",
+            "[Info] Playing playlist:".cyan(),
+            playlist.name.cyan().bold()
+        );
+
+        let playlist = match crate::playlist_manager::fetch_playlist_tracks(&playlist.id).await {
+            Ok(pl) => pl,
+            Err(e) => {
+                eprintln!("Error fetching playlist tracks: {}", e);
+                return;
+            }
+        };
+
+        for track in playlist.tracks {
+            println!(
+                "{} {} {} [{} - {} - {}]",
+                "Now playing".green(),
+                track.title.blue().italic(),
+                "by".green(),
+                track.country.yellow(),
+                track.year.yellow(),
+                track.mood.yellow(),
+            );
+
+            let status = Command::new(&cli.player)
+                .arg("--no-video")
+                .arg(track.links.and_then(|l| l.mpeg).unwrap_or_default())
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .status()
+                .expect("[Error] Failed to start mpv. Do you have mpv installed?");
+
+            if !status.success() {
+                log::error!("mpv exited with {}", status);
+                break;
+            }
+        }
+        return;
+    }
 
     let island = if mode == "islands" {
         Some(select_island().await)
@@ -293,6 +417,8 @@ async fn play_loop (
 
         println!("{} {}", "Player:".bright_black(), player.bright_black().bold());
 
+
+        // TODO : use crate mpv to custom affichage etc
         let status = Command::new(player)
             .arg("--no-video")
             .arg(&song_url)
