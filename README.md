@@ -1,10 +1,6 @@
 # Radiooooo-CLI
 A command-line client made on RUST for radiooooo.com. 
 
-### Note for Radiooooo
-This is a school project where I build a new interface for Radiooooo, using RUST, in order to access its services through terminal.  
-If you work for Radiooooo and you have any questions, do not hesitate contacting me. Ben should have my contact. 
-
 ## Install
 1. Clone this repository
 2. run `cargo build --release`
