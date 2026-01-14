@@ -25,3 +25,18 @@ Options are :
 ### Directly from repository 
 You can run it with `cargo run` and `cargo run -- [options]`
 
+
+
+
+## TODO
+### Main goals
+- [x] Basic API client
+- [x] Play music using command player (mpv)
+- [x] Countries support
+- [x] Decades support
+- [x] Modes support
+- [ ] Play music using crates player
+### Optionals
+- [ ] User authentification
+- [ ] Playlists support -> deppends on user auth
+- [ ] Like and liked songs support -> deppends on user auth
