@@ -40,3 +40,4 @@ You can run it with `cargo run` and `cargo run -- [options]`
 - [ ] User authentification
 - [ ] Playlists support -> deppends on user auth
 - [ ] Like and liked songs support -> deppends on user auth
+- [ ] Query options for next songs, make it possible to chose within 3 possibilities (first one as default)
