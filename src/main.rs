@@ -295,9 +295,9 @@ async fn play_loop (
         );
         println!(
             "{} {} [{}]",
-            "Curated by:".green(),
+            "Curated by ".green(),
             get_profile(&client, json_resp.profile_id.as_deref().unwrap_or_default()).await?
-                .cyan(),
+                .cyan().italic(),
             json_resp.profile_id.unwrap_or_default().yellow()
         );
         println!(
