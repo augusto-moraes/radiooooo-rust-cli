@@ -40,11 +40,23 @@ struct ApiResponse {
     artist: Option<String>,
     country: Option<String>,
     year: Option<String>,
+    profile_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct Links {
     mpeg: Option<String>,
+}
+
+async fn get_profile(client: &Client, profile_id: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let url = format!("https://radiooooo.com/contributor/{}", profile_id);
+
+    let response = client.get(&url).send().await?;
+    let json_resp: serde_json::Value = response.json().await?;
+
+    let profile_name = json_resp["pseudonym"].as_str().unwrap_or("Unknown Profile").to_string();
+
+    Ok(profile_name)
 }
 
 async fn run_interactive(cli: Cli) {
@@ -280,6 +292,13 @@ async fn play_loop (
             json_resp.country.unwrap_or_else(|| "Unknown".to_string()).yellow(),
             json_resp.year.unwrap_or_else(|| "Unknown".to_string()).yellow(),
             json_resp.mood.unwrap_or_else(|| "Unknown".to_string()).yellow(),
+        );
+        println!(
+            "{} {} [{}]",
+            "Curated by:".green(),
+            get_profile(&client, json_resp.profile_id.as_deref().unwrap_or_default()).await?
+                .cyan(),
+            json_resp.profile_id.unwrap_or_default().yellow()
         );
         println!(
             "{} {}",
