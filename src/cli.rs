@@ -21,7 +21,7 @@ pub struct Cli {
     pub countries: Option<String>,
 
     /// Audio player
-    #[arg(long, default_value = "mpv")]
+    #[arg(long, default_value = if cfg!(windows) { "mpv.com" } else { "mpv" })]
     pub player: String,
 
     // --random or -r
